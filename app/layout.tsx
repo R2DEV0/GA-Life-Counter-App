@@ -3,8 +3,8 @@ import "./globals.css";
 import { PwaRegister } from "./pwa-register";
 
 export const metadata: Metadata = {
-  title: "Budget Buddy",
-  description: "Quick budget logger",
+  title: "Grand Archive Life Counter",
+  description: "Life counter for Grand Archive",
   manifest: "/manifest.webmanifest",
   themeColor: "#0b0b0b",
 };
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.jpg" />
       </head>
       <body>
         <PwaRegister />
