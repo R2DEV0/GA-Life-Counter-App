@@ -129,33 +129,42 @@ export default function Page() {
           touchAction: "manipulation",
         }}
       >
-        {/* Left tap zone */}
+        /* Left tap zone (decrement) */
         <button
-          onPointerDown={() => press(setPressState, "left")}
-          onClick={onDec}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            press(setPressState, "left");
+            onDec(); // ✅ do the action here
+          }}
           style={{
             border: "none",
             background: leftShade,
             padding: 0,
             margin: 0,
             cursor: "pointer",
+            touchAction: "manipulation",
           }}
           aria-label={`${label} minus`}
         />
 
-        {/* Right tap zone */}
+        /* Right tap zone (increment) */
         <button
-          onPointerDown={() => press(setPressState, "right")}
-          onClick={onInc}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            press(setPressState, "right");
+            onInc(); // ✅ do the action here
+          }}
           style={{
             border: "none",
             background: rightShade,
             padding: 0,
             margin: 0,
             cursor: "pointer",
+            touchAction: "manipulation",
           }}
           aria-label={`${label} plus`}
         />
+
 
         {/* center overlay */}
         <div
