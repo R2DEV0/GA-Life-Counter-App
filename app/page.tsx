@@ -11,15 +11,12 @@ function clampInt(n: number, min: number, max: number) {
 }
 
 function randInt(min: number, max: number) {
-  // inclusive
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function uniqueRandoms(max: number, count: number): Picks {
   const safeMax = clampInt(max, 1, 1_000_000);
   const safeCount = clampInt(count, 1, 10_000);
-
-  // If count > max, we can't do unique numbers. We'll cap to max.
   const finalCount = Math.min(safeCount, safeMax);
 
   const set = new Set<number>();
@@ -27,16 +24,21 @@ function uniqueRandoms(max: number, count: number): Picks {
   return Array.from(set);
 }
 
+type Press = "none" | "left" | "right";
+
 export default function Page() {
   const [p1, setP1] = useState(0);
   const [p2, setP2] = useState(0);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [maxInput, setMaxInput] = useState("20");
-  const [countInput, setCountInput] = useState("2");
+  const [maxInput, setMaxInput] = useState("4");
+  const [countInput, setCountInput] = useState("1");
   const [picks, setPicks] = useState<Picks>([]);
 
-  // Restore last scores (nice for accidental refresh)
+  // touch feedback per player half
+  const [p1Press, setP1Press] = useState<Press>("none");
+  const [p2Press, setP2Press] = useState<Press>("none");
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -47,7 +49,6 @@ export default function Page() {
     } catch {}
   }, []);
 
-  // Persist
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ p1, p2 }));
@@ -59,7 +60,7 @@ export default function Page() {
     const cnt = Number(countInput);
     const m = Number.isFinite(max) ? Math.trunc(max) : 0;
     const c = Number.isFinite(cnt) ? Math.trunc(cnt) : 0;
-    if (m < 1) return "Pick random numbers";
+    if (m < 1) return "Random Picker";
     if (c < 1) return `Pick from 1–${m}`;
     return `Pick ${c} from 1–${m}`;
   }, [maxInput, countInput]);
@@ -80,19 +81,39 @@ export default function Page() {
     setPicks(uniqueRandoms(max, cnt));
   }
 
+  function press(setter: (v: Press) => void, side: Press) {
+    setter(side);
+    window.setTimeout(() => setter("none"), 110);
+  }
+
   function Side({
     label,
     value,
     onInc,
     onDec,
     flipped,
+    pressState,
+    setPressState,
+    theme,
   }: {
     label: string;
     value: number;
     onInc: () => void;
     onDec: () => void;
     flipped?: boolean;
+    pressState: Press;
+    setPressState: (v: Press) => void;
+    theme: "pink" | "purple";
   }) {
+    const baseBg =
+      theme === "pink"
+        ? "linear-gradient(180deg, #ffe1ee 0%, #ffd2e7 45%, #ffc4df 100%)"
+        : "linear-gradient(180deg, #efe1ff 0%, #e2d0ff 45%, #d7c2ff 100%)";
+
+    // Darken overlay only on the half being touched
+    const leftShade = pressState === "left" ? "rgba(0,0,0,.10)" : "rgba(0,0,0,0)";
+    const rightShade = pressState === "right" ? "rgba(0,0,0,.10)" : "rgba(0,0,0,0)";
+
     return (
       <div
         style={{
@@ -101,20 +122,20 @@ export default function Page() {
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           alignItems: "stretch",
-          borderTop: flipped ? "1px solid #222" : "none",
-          borderBottom: !flipped ? "1px solid #222" : "none",
-          background: "#0b0b0b",
-          color: "#fff",
-          transform: flipped ? "rotate(180deg)" : undefined, // flips top player for face-to-face
+          background: baseBg,
+          transform: flipped ? "rotate(180deg)" : undefined,
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "manipulation",
         }}
       >
-        {/* Left tap zone = decrement */}
+        {/* Left tap zone */}
         <button
+          onPointerDown={() => press(setPressState, "left")}
           onClick={onDec}
           style={{
             border: "none",
-            background: "transparent",
-            color: "inherit",
+            background: leftShade,
             padding: 0,
             margin: 0,
             cursor: "pointer",
@@ -122,13 +143,13 @@ export default function Page() {
           aria-label={`${label} minus`}
         />
 
-        {/* Right tap zone = increment */}
+        {/* Right tap zone */}
         <button
+          onPointerDown={() => press(setPressState, "right")}
           onClick={onInc}
           style={{
             border: "none",
-            background: "transparent",
-            color: "inherit",
+            background: rightShade,
             padding: 0,
             margin: 0,
             cursor: "pointer",
@@ -136,7 +157,7 @@ export default function Page() {
           aria-label={`${label} plus`}
         />
 
-        {/* Center content overlay */}
+        {/* center overlay */}
         <div
           style={{
             position: "absolute",
@@ -144,12 +165,43 @@ export default function Page() {
             display: "grid",
             placeItems: "center",
             pointerEvents: "none",
+            padding: 18,
           }}
         >
-          <div style={{ textAlign: "center" }}>
-            <div style={{ opacity: 0.7, fontWeight: 800, letterSpacing: 0.5 }}>{label}</div>
-            <div style={{ fontSize: 80, fontWeight: 900, lineHeight: 1 }}>{value}</div>
-            <div style={{ opacity: 0.55, fontSize: 12, marginTop: 8 }}>Tap left −1 • Tap right +1</div>
+          <div
+            style={{
+              textAlign: "center",
+              width: "min(360px, 100%)",
+              borderRadius: 24,
+              background: "rgba(255,255,255,.55)",
+              border: "1px solid rgba(255,255,255,.7)",
+              boxShadow: "0 18px 40px rgba(0,0,0,.08)",
+              padding: "18px 16px",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 900,
+                letterSpacing: 0.6,
+                color: "#2b1a2b",
+                opacity: 0.85,
+              }}
+            >
+              {label}
+            </div>
+            <div
+              style={{
+                fontSize: 88,
+                fontWeight: 900,
+                lineHeight: 1,
+                color: "#2b1a2b",
+                textShadow: "0 2px 0 rgba(255,255,255,.6)",
+                marginTop: 6,
+              }}
+            >
+              {value}
+            </div>
           </div>
         </div>
       </div>
@@ -162,19 +214,29 @@ export default function Page() {
         height: "100dvh",
         display: "flex",
         flexDirection: "column",
-        background: "#0b0b0b",
+        background: "#fff",
+        fontFamily: "system-ui",
       }}
     >
-      {/* Top player (flipped for the player across the table) */}
-      <Side label="Player 1" value={p1} onInc={() => setP1((v) => v + 1)} onDec={() => setP1((v) => v - 1)} flipped />
+      {/* Top player (flipped for across-table readability) */}
+      <Side
+        label="Player 1"
+        value={p1}
+        onInc={() => setP1((v) => v + 1)}
+        onDec={() => setP1((v) => v - 1)}
+        flipped
+        pressState={p1Press}
+        setPressState={setP1Press}
+        theme="pink"
+      />
 
       {/* Middle bar */}
       <div
         style={{
           padding: 10,
-          background: "#111",
-          borderTop: "1px solid #222",
-          borderBottom: "1px solid #222",
+          background: "linear-gradient(90deg, #ffdaf0 0%, #e7d6ff 100%)",
+          borderTop: "1px solid rgba(0,0,0,.08)",
+          borderBottom: "1px solid rgba(0,0,0,.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -184,12 +246,13 @@ export default function Page() {
         <button
           onClick={resetAll}
           style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#0b0b0b",
-            color: "#fff",
+            padding: "10px 14px",
+            borderRadius: 999,
+            border: "1px solid rgba(0,0,0,.12)",
+            background: "rgba(255,255,255,.75)",
+            color: "#2b1a2b",
             fontWeight: 900,
+            boxShadow: "0 10px 20px rgba(0,0,0,.08)",
           }}
         >
           Reset
@@ -198,12 +261,13 @@ export default function Page() {
         <button
           onClick={() => setPickerOpen((v) => !v)}
           style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: pickerOpen ? "#fff" : "#0b0b0b",
-            color: pickerOpen ? "#0b0b0b" : "#fff",
+            padding: "10px 14px",
+            borderRadius: 999,
+            border: "1px solid rgba(0,0,0,.12)",
+            background: pickerOpen ? "#2b1a2b" : "rgba(255,255,255,.75)",
+            color: pickerOpen ? "#fff" : "#2b1a2b",
             fontWeight: 900,
+            boxShadow: "0 10px 20px rgba(0,0,0,.08)",
             whiteSpace: "nowrap",
           }}
         >
@@ -211,7 +275,7 @@ export default function Page() {
         </button>
       </div>
 
-      {/* Random picker panel */}
+      {/* Random picker modal (FIXED Z-INDEX) */}
       {pickerOpen && (
         <div
           style={{
@@ -221,6 +285,9 @@ export default function Page() {
             display: "grid",
             placeItems: "center",
             padding: 16,
+
+            // ✅ ensure it's above everything
+            zIndex: 9999,
           }}
           onClick={() => setPickerOpen(false)}
         >
@@ -228,22 +295,24 @@ export default function Page() {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "min(520px, 100%)",
-              background: "#fff",
-              borderRadius: 16,
+              background: "linear-gradient(180deg, #fff 0%, #fff7fd 55%, #f6f0ff 100%)",
+              borderRadius: 20,
               padding: 16,
-              boxShadow: "0 20px 60px rgba(0,0,0,.35)",
+              border: "1px solid rgba(0,0,0,.08)",
+              boxShadow: "0 28px 80px rgba(0,0,0,.35)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>{headerText}</div>
+              <div style={{ fontWeight: 900, fontSize: 18, color: "#2b1a2b" }}>{headerText}</div>
               <button
                 onClick={() => setPickerOpen(false)}
                 style={{
                   padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #ddd",
-                  background: "#fff",
+                  borderRadius: 999,
+                  border: "1px solid rgba(0,0,0,.12)",
+                  background: "rgba(255,255,255,.8)",
                   fontWeight: 900,
+                  color: "#2b1a2b",
                 }}
               >
                 Close
@@ -251,26 +320,43 @@ export default function Page() {
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>Max number (range is 1–max)</label>
+              <label style={{ display: "block", fontWeight: 900, marginBottom: 6, color: "#2b1a2b" }}>
+                Max number (1–max)
+              </label>
               <input
                 inputMode="numeric"
                 value={maxInput}
                 onChange={(e) => setMaxInput(e.target.value)}
-                style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid #ddd", fontSize: 16 }}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,.14)",
+                  fontSize: 16,
+                  outline: "none",
+                }}
                 placeholder="20"
               />
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>How many numbers to pick</label>
+              <label style={{ display: "block", fontWeight: 900, marginBottom: 6, color: "#2b1a2b" }}>
+                How many picks
+              </label>
               <input
                 inputMode="numeric"
                 value={countInput}
                 onChange={(e) => setCountInput(e.target.value)}
-                style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid #ddd", fontSize: 16 }}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,.14)",
+                  fontSize: 16,
+                  outline: "none",
+                }}
                 placeholder="2"
               />
-              <div style={{ opacity: 0.65, fontSize: 13, marginTop: 8 }}>Picks are unique (no duplicates).</div>
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
@@ -279,12 +365,13 @@ export default function Page() {
                 style={{
                   flex: 1,
                   padding: "12px 14px",
-                  borderRadius: 12,
+                  borderRadius: 999,
                   border: "none",
-                  background: "#111",
+                  background: "#2b1a2b",
                   color: "#fff",
                   fontWeight: 900,
                   fontSize: 16,
+                  boxShadow: "0 12px 24px rgba(43,26,43,.22)",
                 }}
               >
                 Pick
@@ -294,11 +381,12 @@ export default function Page() {
                 style={{
                   flex: 1,
                   padding: "12px 14px",
-                  borderRadius: 12,
-                  border: "1px solid #ddd",
-                  background: "#fff",
+                  borderRadius: 999,
+                  border: "1px solid rgba(0,0,0,.14)",
+                  background: "rgba(255,255,255,.8)",
                   fontWeight: 900,
                   fontSize: 16,
+                  color: "#2b1a2b",
                 }}
               >
                 Clear
@@ -306,8 +394,8 @@ export default function Page() {
             </div>
 
             {picks.length > 0 && (
-              <div style={{ marginTop: 14, padding: 12, borderRadius: 14, background: "#f6f6f6" }}>
-                <div style={{ fontWeight: 900, marginBottom: 8 }}>Result</div>
+              <div style={{ marginTop: 14, padding: 12, borderRadius: 16, background: "rgba(43,26,43,.06)" }}>
+                <div style={{ fontWeight: 900, marginBottom: 8, color: "#2b1a2b" }}>Result</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {picks.map((n) => (
                     <div
@@ -315,11 +403,12 @@ export default function Page() {
                       style={{
                         padding: "10px 12px",
                         borderRadius: 999,
-                        background: "#111",
-                        color: "#fff",
+                        background: "linear-gradient(90deg, #ffb9e0 0%, #cdb6ff 100%)",
+                        color: "#2b1a2b",
                         fontWeight: 900,
                         minWidth: 44,
                         textAlign: "center",
+                        border: "1px solid rgba(0,0,0,.08)",
                       }}
                     >
                       {n}
@@ -333,7 +422,15 @@ export default function Page() {
       )}
 
       {/* Bottom player */}
-      <Side label="Player 2" value={p2} onInc={() => setP2((v) => v + 1)} onDec={() => setP2((v) => v - 1)} />
+      <Side
+        label="Player 2"
+        value={p2}
+        onInc={() => setP2((v) => v + 1)}
+        onDec={() => setP2((v) => v - 1)}
+        pressState={p2Press}
+        setPressState={setP2Press}
+        theme="purple"
+      />
     </main>
   );
 }
