@@ -30,8 +30,8 @@ export default function Page() {
   const [p2, setP2] = useState(0);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [maxInput, setMaxInput] = useState("20");
-  const [countInput, setCountInput] = useState("2");
+  const [maxInput, setMaxInput] = useState("4");
+  const [countInput, setCountInput] = useState("1");
   const [picks, setPicks] = useState<Picks>([]);
 
   const [p1Press, setP1Press] = useState<Press>("none");
