@@ -181,7 +181,7 @@ export default function Page() {
             </div>
 
             <div className="tcg-field">
-              <label className="tcg-fieldLabel">Max number (1–max)</label>
+              <label className="tcg-fieldLabel">Cards in Memory</label>
               <input
                 className="tcg-input"
                 inputMode="numeric"
@@ -192,7 +192,7 @@ export default function Page() {
             </div>
 
             <div className="tcg-field">
-              <label className="tcg-fieldLabel">How many picks</label>
+              <label className="tcg-fieldLabel">Amount to Banish</label>
               <input
                 className="tcg-input"
                 inputMode="numeric"
@@ -200,7 +200,6 @@ export default function Page() {
                 onChange={(e) => setCountInput(e.target.value)}
                 placeholder="2"
               />
-              <div className="tcg-muted">Unique picks (no duplicates).</div>
             </div>
 
             <div className="tcg-actions">
