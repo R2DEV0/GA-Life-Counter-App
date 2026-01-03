@@ -165,7 +165,7 @@ export default function Page() {
           className={`tcg-pill ${pickerOpen ? "tcg-pill--active" : ""}`}
           onClick={() => setPickerOpen((v) => !v)}
         >
-          Random
+          Banish
         </button>
       </div>
 
